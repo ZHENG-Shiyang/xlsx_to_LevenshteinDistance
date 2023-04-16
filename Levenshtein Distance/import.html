@@ -1,0 +1,192 @@
+<!-- 作者：郑诗扬 -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Levenshtein Distance 指数获取模块</title>
+    <script type="text/javascript" src="./xlsx.full.min.js"></script>
+    <style>
+        .expBtn {
+            border-radius: 23px;
+            margin: 2% 0 5% 35%;
+            padding: 4%;
+            background-color: whitesmoke;
+            font-family: '楷体';
+            font-size: medium;
+        }
+
+        .WPIntro {
+            text-align: center;
+            margin-top: 5%;
+            font-family: '楷体';
+        }
+
+        .WPIntro1 {
+            text-align: center;
+            margin-top: 5%;
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+        }
+
+        .pic {
+            border-radius: 23px;
+            display: flex;
+            margin-top: 2%;
+            margin-left: 38%;
+            vertical-align: middle;
+        }
+
+        .pic1 {
+            border-radius: 23px;
+            display: flex;
+            margin-left: 25%;
+            vertical-align: middle;
+        }
+
+        .pictext {
+            text-align: center;
+            font-family: '楷体';
+        }
+    </style>
+</head>
+
+<body>
+    <p class="WPIntro">该模块为 Levenshtein Distance 指数获取模块，使用前请将需要对比的单词分两列添加至 .xlsx
+        表格中（如图1），之后将该表导入本页，即可自动化获取莱温斯坦距离及两词间正字法相似性分数 <sup>1</sup>（如图2）。</p>
+    <input type="file" onchange="readExcel(this)" class="expBtn" />
+    <hr style="border: 0.5px solid royalblue; width: 40%; margin-top: 10px;">
+    <img src="./pre.png" class="pic" />
+    <p class="pictext">图1</p>
+    <img src="./post.png" class="pic1" />
+    <p class="pictext">图2</p>
+    <p class="WPIntro1"><sup>1</sup>SCHEPENS, JOB; DIJKSTRA, TON; GROOTJEN, FRANC (2012). Distributions of cognates in
+        Europe as based on Levenshtein distance. <i>Bilingualism: Language and Cognition</i>, 15(1), 157–166. <a
+            href="https://sci-hub.wf/https://doi.org/10.1017/S1366728910000623"><u>doi:10.1017/S1366728910000623</u></a>
+    </p>
+    <script>
+        function readExcel(file_obj) {
+            var reader = new FileReader();
+            var file = file_obj.files[0];
+            let result = new Array()
+            reader.readAsBinaryString(file);
+
+            reader.onload = function (e) {
+                var data = e.target.result;
+                var wb = XLSX.read(data, { type: 'binary' });
+
+                sheetName = wb.SheetNames[0]   // 获取文档中第一个sheet页签的名字
+                sheets = wb.Sheets[sheetName]   // 获sheet名页签下的数据
+
+                // console.log(sheets);   // 返回sheet对象到控制台
+                let length = -1
+                for (let key in sheets) {
+                    // console.log(Array.from(key))
+                    length++
+                }
+                // console.log('length:', length)
+                for (let x = 2; x < (length / 2); x++) {
+                    let numA = 'A' + x.toString()
+                    let numB = 'B' + x.toString()
+                    let string = sheets[numA].h
+                    let string1 = string.split('')
+                    let index = string1.length
+                    let string2 = sheets[numB].h
+                    let index2 = string2.split('').length
+                    // let j = 0
+                    // let regArr = new Array()
+
+                    // console.log('LD:', levenshtein(string1, string2))
+
+                    let LD =  levenshtein(string, string2)
+                    if (index <= index2) {
+                        result.push({ A: string, B: string2, result: `${LD}`, score: `${1 - (LD / index2)}` })
+                    } else {
+                        result.push({ A: string, B: string2, result: `${LD}`, score: `${1 - (LD / index)}` })
+                    }
+                    
+                }
+                exportEx(result)
+            };
+        }
+
+        function exportEx(result) {
+            let str = `Levenshtein Distance & similarity score：\n`;
+            var jsonData = result
+            //增加\t为了不让表格显示科学计数法或者其他格式
+            for (let i in jsonData) {
+                for (let j in jsonData[i]) {
+                    str += `${jsonData[i][j] + '\t'},`;
+                }
+                str += '\n';
+            }
+            //encodeURIComponent解决中文乱码
+            let uri = 'data:text/csv;charset=utf-8,\ufeff' + encodeURIComponent(str);
+            //通过创建a标签
+            let link = document.createElement("a");
+            link.href = uri;
+            link.download = "File.xlsx";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+
+        const min = Math.min
+
+        // 构造二维数组
+        const initialArray = (lgt1, lgt2) => {
+            const array = []
+            for (let i = 0; i < lgt1; i++) {
+                array[i] = Array(lgt2)
+            }
+            return array
+        }
+
+        /**
+         * Levenshtein Distance
+         * 从一个字符串转成另一个字符串所需要的最小操作步数
+         */
+        const levenshtein = (sa, sb) => {
+            let d = []
+            const algt = sa.length
+            const blgt = sb.length
+            let i = 0
+            let j = 0
+
+            if (algt === 0) return blgt
+
+            if (blgt === 0) return algt
+            // 初始化二维数组
+            d = initialArray(algt + 1, blgt + 1)
+
+            for (i = 0; i < algt + 1; i++) {
+                d[i][0] = i
+            }
+
+            for (j = 0; j < blgt + 1; j++) {
+                d[0][j] = j
+            }
+
+            for (i = 1; i < algt + 1; i++) {
+                for (j = 1; j < blgt + 1; j++) {
+                    if (sa[i - 1] === sb[j - 1]) {
+                        d[i][j] = d[i - 1][j - 1]
+                    } else {
+                        d[i][j] = min(
+                            d[i - 1][j] + 1,
+                            d[i][j - 1] + 1,
+                            d[i - 1][j - 1] + 1
+                        )
+                    }
+                }
+            }
+
+            return d[i - 1][j - 1]
+        }
+    </script>
+</body>
+
+</html>
